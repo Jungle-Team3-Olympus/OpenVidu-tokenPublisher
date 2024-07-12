@@ -14,9 +14,18 @@ app.use(cors());
 app.use(express.json());
 app.use(express.raw({ type: "application/webhook+json" }));
 
+// Sessions
+const sessions = {};
+
+// AWS Health Check response
+app.get("/", (req, res) => {
+  res.send("Server is running");
+});
+
 app.post("/token", async (req, res) => {
   const roomName = req.body.roomName;
   const participantName = req.body.participantName;
+  const isSeller = req.body.isSeller;
 
   if (!roomName || !participantName) {
     res
@@ -25,15 +34,30 @@ app.post("/token", async (req, res) => {
     return;
   }
 
+  // Generate a unique session number
+  let sessionNumber = sessions[roomName] ? sessions[roomName] + 1 : 1;
+  sessions[roomName] = sessionNumber;
+
   const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
     identity: participantName,
   });
-  at.addGrant({ roomJoin: true, room: roomName });
+  // at.metadata = { isSeller: isSeller, sessionNumber: sessionNumber };
+
+  // at.addGrant({ roomJoin: true, room: roomName });
+  // isSeller 여부에 따라 권한 부여
+  if (isSeller) {
+    at.addGrant({ roomCreate: true, roomJoin: true, room: roomName });
+  } else {
+    at.addGrant({ roomJoin: true, room: roomName });
+  }
+
   const token = await at.toJwt();
+
   console.log(
     "Generated token:",
     token + " for room: " + roomName + " and participant: " + participantName
   );
+
   res.json({ token });
 });
 
@@ -48,11 +72,16 @@ app.post("/webhook", async (req, res) => {
       req.body,
       req.get("Authorization")
     );
-    console.log(event);
+    console.log("Received webhook event", event);
+
+    if (event.event === "participant_joined") {
+    } else if (event.event === "participant_left") {
+    }
+
+    res.status(200).send();
   } catch (error) {
     console.error("Error validating webhook event", error);
   }
-  res.status(200).send();
 });
 
 app.listen(SERVER_PORT, () => {
