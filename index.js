@@ -12,14 +12,14 @@ const app = express();
 
 const corsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = ["https://pixeller.net"];
+    const allowedOrigins = ["//pixeller.net"];
     if (allowedOrigins.includes(origin) || !origin) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: "GET,HEAD,PUT,OPTIONS",
+  methods: "GET,HEAD,PUT,OPTIONS,POST",
   allowedHeaders: "Content-Type,Authorization",
   credentials: true,
 };
